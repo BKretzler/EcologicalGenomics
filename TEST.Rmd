@@ -1,0 +1,7 @@
+---
+title: "Test_EcologicalGenomics"
+author: "Bailey Kretzler"
+date: "9/1/2021"
+output: html_document
+---
+Setting up github notebook
