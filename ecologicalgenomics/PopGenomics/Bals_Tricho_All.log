@@ -1,0 +1,20 @@
+
+VCFtools - 0.1.14
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+	--vcf Chr18.recode.vcf
+	--fst-window-size 50000
+	--weir-fst-pop Bals_Inds.txt
+	--weir-fst-pop Tricho_Inds.txt
+	--keep Bals_Inds.txt
+	--keep Tricho_Inds.txt
+	--out Bals_Tricho_All
+
+Keeping individuals in 'keep' list
+After filtering, kept 576 out of 576 Individuals
+Outputting Windowed Weir and Cockerham Fst estimates.
+Weir and Cockerham mean Fst estimate: 0.17382
+Weir and Cockerham weighted Fst estimate: 0.22734
+After filtering, kept 208375 out of a possible 208375 Sites
+Run Time = 18.00 seconds

@@ -1,0 +1,146 @@
+cd /data/project_data/ancient/rawdata
+
+
+# look at file
+wc trichocarpa_genomic.fna.gz
+# output is number of line , number of words, number of characters
+
+
+# create a file with all of the sequences to align
+cat davidiana_genomic.fna.gz Deltoides_genomic.fna.gz euphratica_genomic.fna.gz ilicifolia_genomic.fna.gz salix_purpurea_genomic.fa.gz salix_purpurea_genomic.fa.gz simonii_genomic.fna.gz tomentosa_genomic.fna.gz alba_genomic.fna.gz > new_sequences.fna.gz
+
+# unzip both of these files
+gunzip trichocarpa_genomic.fna.gz
+
+gunzip new_sequences.fna.gz
+
+# run nucmer to align and get the delta file
+nucmer ./rawdataCOPY_2/trichocarpa_genomic.fna ./rawdataCOPY_2/new_sequences.fna --sam-long=/data/project_data/ancient/rawdataCOPY_2/test.sam
+
+# fixes the header
+samtools -ht reference.fna test.sam
+
+file=test.sam; 
+
+cat $file | sed 's/HD\ /HD/' | sed 's/1.0\ /1.0/' | sed 's/\tSO:coordinate/SO:coordinate/' | sed s'/VN1/VN:1/' | \
+    sed 's/HD/HD\t/' | sed 's/SO:unsorted/\tSO:unsorted/' | sed 's/@PG /@PG\t/' | sed 's/ PN/\tPN/' | \
+    sed 's/ VN/\tVN/' | sed 's/ CL/\tCL/' > $file.fixed;
+
+samtools view -F 256 -bo test2.bam test.sam.fixed
+
+samtools sort -@ 10 test2.bam -o test2.sorted.bam
+
+samtools mpileup -uf /data/project_data/ancient/rawdataCOPY_2/trichocarpa_genomic.fna test2.sorted.bam | bcftools call -mv > test2.raw.vcf
+
+
+#####CHANGE UP##########
+#loop through files individually
+# need to do this way because it names the samples by the bam file name (mpileup does)
+# we don't want to give them all the same name because they are different species
+# so we split
+# run everything in this loop including nucmer but excluding dsuite
+
+for FILE in $
+
+
+
+#### NEED TO FIGURE OUT ####
+# how to create samples file
+# how to run dsuite and what we need from it
+
+#All species/populations are treated equally in Dquartets - there should not be any outgroup.
+	#---- do not use this one!! We want an outgroup
+
+# I think we want to use dtrios and maybe dtrioscombine (for chromosome level) and dinvestigate (look at elevated Dsuites)
+
+ Dsuite Dtrios --tree=TREE_FILE.nwk --out-prefix=dsuite_run  test.vcf SETS.txt
+ Dsuite Dtrios -c -t tree.nwk poplar.vcf SETS.txt 
+
+## the samples file:
+# this should be the individual ID in column 1
+# then /t 
+# then the species name, except for salix which has to be labeled "outgroup"
+
+Ind1	P_tricho
+Ind2 	P_tricho
+Ind3	P_alba
+etc.
+Ind45	Outgroup (AKA - salix)
+
+
+# this has to be created one the vcf file is ready
+
+
+
+
+##################################################
+## Old Code, IGNORE
+##################################################
+# use to check that number of scaffolds is retained
+# or that scaffolds are present at all
+zcat alba_genomic.fna.gz | grep '>' | wc -l
+
+# adding to the end of the file
+zcat filetoadd >> filetoaddto 
+
+cp alba_genomic.fna.gz new_sequences.fna.gz
+
+zcat davidiana_genomic.fna.gz >> new_sequences.fna.gz
+zcat Deltoides_genomic.fna.gz >> new_sequences.fna.gz
+zcat euphratica_genomic.fna.gz >> new_sequences.fna.gz
+zcat ilicifolia_genomic.fna.gz >> new_sequences.fna.gz
+zcat salix_purpurea_genomic.fa.gz >> new_sequences.fna.gz
+zcat simonii_genomic.fna.gz >> new_sequences.fna.gz
+zcat tomentosa_genomic.fna.gz >> new_sequences.fna.gz
+
+# try unzipping part of it
+
+zcat alba_genomic.fna.gz | head -n10 > alba_test.fasta # this worked
+
+
+# this isn't working because references isn't properly alignt
+# can put all the sequences together and pad by inserting AAAAAAA - string of single letter bc unlikely
+# take tricho reference - use sed 's/>.+\n[A]#/g' where # is the number of times you and to repeat
+# do a test with tricho - just do the head for like 4 lines
+
+#test set of tricho
+
+head -n631200 trichocarpa_genomic.fna > tricho_test
+
+tail -n10 tricho_test # check to make sure we captured 2
+
+#this works except doesn't grab everthing
+sed "s/>/i $(printf '%.0sA' {0..500})/g" tricho_test > tricho_edit_test
+
+nucmer -p trichocarpa_genomic.fna new_sequences.fna
+
+
+### experiment to recreate sam file with mummer
+#just for a subset
+#replace headers with something simple
+#another method - need to get code from steve if it works
+
+grep '>' -n file
+
+head -n71510 new_sequences.fna > new_seqs_test
+
+nucmer ./rawdataCOPY_2/trichocarpa_genomic.fna ./rawdataCOPY_2/new_sequences.fna --sam-long=/data/project_data/ancient/rawdataCOPY_2/test.sam
+
+# this should fix the sq header of the sam file.. alledgedly
+
+file=nucmer_output.sam; 
+
+cat $file | sed 's/HD\ /HD/' | sed 's/1.0\ /1.0/' | sed 's/\tSO:coordinate/SO:coordinate/' | sed s'/VN1/VN:1/' | \
+    sed 's/HD/HD\t/' | sed 's/SO:unsorted/\tSO:unsorted/' | sed 's/@PG /@PG\t/' | sed 's/ PN/\tPN/' | \
+    sed 's/ VN/\tVN/' | sed 's/ CL/\tCL/' > $file.fixed;
+	
+#convert fixed sam file to a bam file 
+
+
+samtools view --reference your_reference_genome.fasta $file.fixed > $file.fixed.bam
+
+# use mpileup for sam > vcf
+samtools mpileup -uf trichocarpa_genomic.fna test.sam | bcftools call -v > test.raw.vcf
+
+
+

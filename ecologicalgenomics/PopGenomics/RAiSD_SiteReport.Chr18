@@ -1,0 +1,19 @@
+
+ ooooooooo.         .o.        o8o   .oooooo..o oooooooooo.
+ `888   `Y88.      .888.       `"'  d8P'    `Y8 `888'   `Y8b
+  888   .d88'     .8"888.     oooo  Y88bo.       888      888
+  888ooo88P'     .8' `888.    `888   `"Y8888o.   888      888
+  888`88b.      .88ooo8888.    888       `"Y88b  888      888
+  888  `88b.   .8'     `888.   888  oo     .d8P  888     d88'
+ o888o  o888o o88o     o8888o o888o 8""88888P'  o888bood8P'
+
+ RAiSD, Raised Accuracy in Sweep Detection
+ This is version 2.9 (released in August 2020)
+ Copyright (C) 2017, and GNU GPL'd, by Nikolaos Alachiotis and Pavlos Pavlidis
+ Contact n.alachiotis/pavlidisp at gmail.com
+
+ Command: RAiSD -n Chr18 -I Chr18.recode.vcf -f -t -R -P -D -A 0.99 -X Chr18_centromere.txt 
+
+ Index: Name | Sites = SNPs + Discarded | Discarded = HeaderCheckFailed + MAFCheckFailed + WithMissing + Monomorphic
+
+ 0: Chr18 | 208375 = 190886 + 17489 | 17489 = 17489 + 0 + 0 + 0

@@ -1,0 +1,62 @@
+#!/bin/bash
+
+#change # of cores (-t15 to less) in case of others using server or running multiples at once
+nucmer -t15 --mum trichocarpa_genomic.fna ${file}_genomic.fna --sam-long=${file}.sam
+
+file2=${file}.sam
+
+# fixes formating of sam file
+# replacing spaces with tabs for most part
+# just fixes formatting and typos
+cat $file2 | sed 's/HD\ /HD/' | sed 's/1.0\ /1.0/' | sed 's/\tSO:coordinate/SO:coordinate/' | sed s'/VN1/VN:1/' | \
+    sed 's/HD/HD\t/' | sed 's/SO:unsorted/\tSO:unsorted/' | sed 's/@PG /@PG\t/' | sed 's/ PN/\tPN/' | \
+    sed 's/ VN/\tVN/' | sed 's/ CL/\tCL/' > $file2.fixed
+    
+rm $file2
+
+# converts fixed sam file to bam 
+samtools view -@ 15 -ht trichocarpa_genomic.fna.fai -F 256 -b ${file2}.fixed -o ${file2}.fixed.bam
+
+rm ${file2}.fixed
+
+#sorts the file
+sambamba sort -t 15 --tmpdir=tmp/ ${file2}.fixed.bam -o ${file2}.fixed.sorted.bam
+
+# run subset of mpileup
+ls *sorted.bam >bamlist.txt
+samtools mpileup -uf /data/project_data/ancient/rawdataCOPY_2/trichocarpa_genomic.fna -b bamlist.txt -r NC_037285.1:500000-600000 | bcftools call -mv > poplar.vcf
+
+#mpileup for full set
+ls *sorted.bam >bamlist.txt
+samtools mpileup -uf /data/project_data/ancient/rawdataCOPY_2/trichocarpa_genomic.fna -b bamlist.txt | bcftools call -mv > poplar.vcf
+
+vcftools --vcf poplar.vcf --max-missing 0.95 --max-alleles 2 --min-alleles 2 --remove-indels --recode --out poplar_filtered
+
+# run dsuite with filtered poplar vcf and manually created SETS.txt + create tree
+Dsuite Dtrios --out-prefix=dsuite_run_filtered  --tree=TREE_FILE.nwk poplar_filtered.recode.vcf SETS.txt
+
+Dsuite Fbranch TREE_FILE.nwk dsuite_run_filtered_tree.txt
+
+((((((trichocarpa,deltoides),simonii),(davidiana,alba)),(euphratica,ilicifolia)),tomentosa),Outgroup)  
+
+
+branch  branch_descendants      Outgroup        tomentosa       euphratica      ilicifolia      simonii davidiana       alba    trichocarpa     deltoides
+b2      euphratica,ilicifolia,davidiana,alba,simonii,trichocarpa,deltoides      nan     nan     nan     nan     nan     nan     nan     nan     nan
+b3      tomentosa       nan     nan     nan     nan     nan     nan     nan     nan     nan
+b4      davidiana,alba,simonii,trichocarpa,deltoides    nan     0       nan     nan     nan     nan     nan     nan     nan
+b5      euphratica,ilicifolia   nan     0       nan     nan     nan     nan     nan     nan     nan
+b6      simonii,trichocarpa,deltoides   nan     0       0       0       nan     nan     nan     nan     nan
+b7      davidiana,alba  nan     0       0       0       nan     nan     nan     nan     nan
+b8      euphratica      nan     0       nan     nan     0       0       0       0       0
+b9      ilicifolia      nan     0       nan     nan     0       0       0       0.142543        0
+b10     trichocarpa,deltoides   nan     0       0       0       nan     0       0       nan     nan
+b11     simonii nan     0       0       0       nan     0       0       nan     nan
+b12     davidiana       nan     0       0       0       0       nan     nan     0       0
+b13     alba    nan     0       0       0       0       nan     nan     0       0
+b14     trichocarpa     nan     0       0.120441        0.272094        0       0       0       nan     nan
+b15     deltoides       nan     0       0       0       0.236742        0       0       nan     nan
+
+
+
+dtools.py 
+fbranch.txt TREE_FILE.nwk

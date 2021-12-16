@@ -1,0 +1,33 @@
+
+ ooooooooo.         .o.        o8o   .oooooo..o oooooooooo.
+ `888   `Y88.      .888.       `"'  d8P'    `Y8 `888'   `Y8b
+  888   .d88'     .8"888.     oooo  Y88bo.       888      888
+  888ooo88P'     .8' `888.    `888   `"Y8888o.   888      888
+  888`88b.      .88ooo8888.    888       `"Y88b  888      888
+  888  `88b.   .8'     `888.   888  oo     .d8P  888     d88'
+ o888o  o888o o88o     o8888o o888o 8""88888P'  o888bood8P'
+
+ RAiSD, Raised Accuracy in Sweep Detection
+ This is version 2.9 (released in August 2020)
+ Copyright (C) 2017, and GNU GPL'd, by Nikolaos Alachiotis and Pavlos Pavlidis
+ Contact n.alachiotis/pavlidisp at gmail.com
+
+ Command: RAiSD -n Chr18 -I Chr18.recode.vcf -f -t -R -P -D -A 0.99 -X Chr18_centromere.txt 
+ Samples: 576
+ Format:  vcf
+ Rscript: R scripting front-end version 3.6.0 (2019-04-26)
+
+ A pattern structure of 13107 patterns (max. capacity) and approx. 2 MB memory footprint has been created.
+
+ The pattern structure has been resized to 6898 patterns (max. capacity) and approx. 2 MB memory footprint.
+
+
+ 0: Set Chr18 | sites 208375 | snps 190886 | region 16259782 - Var 15245084 2.215e+01 | SFS 14028 1.525e-11 | LD 156868 3.523e+00 | MuStat 15245084 6.757e-10
+
+ Sets (total):     1
+ Sets (processed): 1
+ Sets (skipped):   0
+
+ Total execution time 37.31717 seconds
+ Total memory footprint 3674 kbytes
+

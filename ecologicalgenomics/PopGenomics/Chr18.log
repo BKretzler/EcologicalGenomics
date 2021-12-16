@@ -1,0 +1,14 @@
+
+VCFtools - 0.1.14
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+	--vcf Chr18.recode.vcf
+	--chr Chr18
+	--out Chr18
+	--window-pi 50000
+
+After filtering, kept 576 out of 576 Individuals
+Outputting Windowed Nucleotide Diversity Statistics...
+After filtering, kept 208375 out of a possible 208375 Sites
+Run Time = 16.00 seconds

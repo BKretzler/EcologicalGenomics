@@ -1,0 +1,1244 @@
+---
+title: "PopulationGenomics"
+author: "Bailey Kretzler"
+date: "10/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Where we have been and where we are going
+
+* unit 1 - microbiomes
+  * assessing species (taxa) level diversity
+  * the environment shapes community diversity
+  * amplicon (16s) sequencing
+* unit 2 - transcriptomics
+  * RNAseq
+  * assess levels of gene expression in response to experimental evolution and environmental treatment
+* unit 3 - popluation/landscape genomics
+  * this is where we are now!!
+  * assessing levels of genomic diversity across the genome (DNA)
+    * potentially coding and non-coding
+  * whole genome sequencing (mostly on illumina platform)
+  * sequence EVERYTHING
+  * how does this influence how we assess a population?? or a species??
+
+
+## What is a population:
+
+* a genetically cohesive group that are exchanging genes with eachother
+  * a group that interbreeds
+  * what about when these lines blur and two populations mate? what becomes the population?
+* groups sharing a habitat or geographical region that is isolated
+  * this is where the landscape comes into play
+  * limits/regulates how populations interact
+* divergence in morphology/physiology due to the environment (natural selection)
+* Effective population size (level of diversity) will influence level of genetic drift
+* all these factors combined impact nucleotide diversity (whole population/group) within the genome/chromosome
+  * the locations where we diverge from the population "baseline" of diversity tend to be selection hot spots
+    * within this we get some degree of "hitch hiking" - where other genes are selected along side the one under selection/that has been fixed
+
+* Fst is a measure of how different two populations are
+  * F -> meaure of inbreeding, deficit of heterozygosity
+  * s -> sub population
+  * t -> total population
+  * examines heterozygosity in range wide group (Ht) and compares to the heterozygosity within each group (Hs) relative to the Ht
+  
+             (Ht-Hs)/Ht
+  * 1 = complete isolation
+  * 0 = complete admixation
+  * when we see signs of selection in one population but not another (based on nucleotide diversity) we see a higher Fst - a "peak"
+    * helps to identify areas of divergence 
+    * peaks sometimes called "islands of divergence"
+    * at species level the islands often contain regions that involve reporductive isolation
+  * how do we know when the jump to high Fst occured?
+    * linkage and block size can help us understand how long ago the area of the genome came under selection
+    * results in more gradual peak
+    * given we had the ancestral populations
+    * this is super complicated though and we rarely get down to absolute certainty
+    
+    
+## The study system:
+
+Poplars (*Populus*) - fast growing deciduous trees.
+
+* well annotated reference genome - first tree to be sequenced (using SANGER)
+* highly diverse
+* pretty compact genome 
+* biofuel crop across the world (grown for ethanol)
+* hybridize a lot!
+
+* *populus trichocarpa*
+  * huge
+  * mostly grows in temperate regions
+* *populus balsamifera*
+  * have some fragmented populations in the rockies
+  * recently divereged from *trichocarpa*
+  * more seasonal habitats - exposed to more extreme weather
+* there is a nice clear hybrid zone between these populations along the rockies
+* recent grant to study this with 3 goals:
+  * Understand the geographic structure of hybridization and its consequences for genomic diversity
+  * Elucidate the role of particular genomic regions and their interactions with the environment in explaining hybrid fitness
+  * Test the fitness effects of introgression through controlled hybrid crosses
+
+
+## Sampling design:
+
+*collected cuttings from 6 transects throughout the hybrid zone
+  * run from range of pure trichocarpa to pure balsamifera
+  * also some from well away from hybrid zone
+* total samples = 574
+* rooted in greenhouse and extracted DNA from leaf tissues (new leafs)
+* paired end
+* 3 reps of all genotypes at 3 locations (here at the hort farm!!)
+* generally high quality reads - contains nuclear, plastid and maybe some other stuff tho
+* phenotype data from all of these! or at least some - 2021 is first full growing season (post establishment)
+* tricho and balsam differ in their leaf form and their fruits (tricho = 3 locule, balsam = 2)
+  * also balsamifera is more adapted to the burlington climate (close to native range)
+
+
+## What questions can we ask
+
+
+1. is there a genomic correlation with climate data? is there clustering based on genomics and environment that distinguishes the hybrid zone?
+2. in the hybrid zone: are they hybridizing the same way? What genes are common in the hybrid zone transition?
+3. When did the groups diverge? Both the species and the hybrids.
+4. What direction are the hybrids pulled (more similar to balsamifera vs trichocarpa) after the F1 generation?
+5. How plastic are hybrids vs species in the common gardens (and mini-gardens)?
+6. How do the species and hybrids simply map out? where is the actual hybrid zone? Basically update the range map in order to class each genotype for other data analysis.
+7. How are these regions impacted by forest fires?
+
+
+## Terminology:
+
+* hybridization: the initial cross between two species
+* admixture: similar to hybridization but can occur at all scales of organization (i.e. slightly divergent populations)
+* introgression: as back crossing occurs, how genes integrate into the population
+
+
+
+### Steps prior to what we do
+
+* start with fastq file
+  * we then clean this 
+* then these sequences were mapped to the reference genome using the burrows-wheeler alignment (BWA) program
+* we then align these and remove duplicates and call SNPs usting GATK
+* filter to remove positions with >10% missingness and minor allele frequencies <0.002 (.2%?)
+  * these are the variables wayyy out on the skewed tale and are incredibly rare
+* impute missing values - by looking at alleles nearby that may be in linkage with missing
+*output in variant call format (VCF)
+
+the VCF file is what we use for analysis!!!
+
+
+
+
+#### Let's get into the file!
+
+```
+#where the file is:
+#_______________________________________
+
+cd /data/project_data/PopGenomics
+
+#_______________________________________  
+  
+  #contains 2 files:
+    # metadata: Combined_Transect_Sampling_Data_2020.txt
+    # data: poplat_hybrids.vcf.gz
+        #this is zipped! we need to unzip
+
+zcat poplar_hybrids.vcf.gz | head -n 11
+
+
+  #this header also contains important metadata like abbreviations
+  #this basically a massive text file that specifies the allele at each SNP position for all samples
+
+
+
+
+```
+
+### working with VCF files using vcftools
+
+We can look at some info about our file using:
+
+```
+vcftools --gzvcf poplar_hybrids.vcf.gz
+
+```
+
+returns:
+
+*Using zlib version: 1.2.7
+*After filtering, kept 576 out of 576 Individuals
+*After filtering, kept 4932169 out of a possible 4932169 Site - number of snps
+*Run Time = 62.00 seconds
+
+
+We can then specify the minor allele cut off by modifying the same code:
+
+```
+vcftools --gzvcf poplar_hybrids.vcf.gz --maf 0.08 #numb is minor allele frequency
+
+# to save:
+
+vcftools --gzvcf poplar_hybrids.vcf.gz --maf 0.08 --recode --out ~/poplar_hybrids_maf05
+
+```
+
+* the idea here is to maintain variance while also cleaning up artifacts/bad data
+* based on the analysis in class, 0.05 seems to be a good MAF
+
+We can also filter the vcf using the metadata:
+
+```
+grep "Alaska" metadatafilename # returns the metadata for samples from this transect
+
+grep "Alaska" metadatafilename -f1 #returns just the first col (can also use f1-f2, f2-f4, etc.)
+
+
+
+
+
+```
+
+### Identifying ancestry with Admixture analysis
+
+*to do this we define a number of clusters which wil be used to allocate proportion of ancestry to each cluster (K)
+  * attempts to maximize hardy-weinberg and linkage equilibrium 
+  * required linkages to be filtered??
+  
+  
+### Run in R to visualize/plot
+
+From admixture we will obtain a q file that we can import into r to view the proportional ancestry at each site for our given K value. We also produce a log file from which we can obtain the cross validation error by using grep on the file to look for CV @ our q value.
+
+* we want to ask if more admixed individuals have greater fitness.
+  * do look at this we can plot genome wide hetero by diversity of ancestory scores 
+    * we expect to see this be a positive linear correlation
+  * we have scores for diversity of ancestory (@K = 5 cause it's the best)
+  * we need to get the genome-wide heterozygosity now
+    * to do this we use vcftools
+    
+```
+vcftools --gzvcf /data/project_data/PopGenomics/poplar_hybrids.maf05.vcf.gz \
+--het \
+--out ~/myresults/het_maf05
+
+
+```
+
+
+### Now we want to look at how selection has impacted the genome
+
+* directional selection result in movement towards a preferred genome
+  * decreases diversity
+* balancing selection attempts to keep some alleles in balance (when one allele becomes to rare it is selected for)
+  * this maintains or increases diversity
+* background selection is selection against deleterious mutations in the genome
+  * can reduce diversity, not always
+  *usually doesn't drag other mutations nearby with it
+* local adaptation means that selection is based on the environment - similar to balancing selection but bound by space
+  * allelic diversity will depend on the environment
+  * different alleles preferred in some envs. vs others. 
+
+Each type of selection has a genomic test related to it, we will focus on directional selection by looking for selective sweeps
+
+* You also require different types of genetic data depending on the selection type of interest (question)
+* also depends on your experimental design, scale, and organism
+
+**OUR QUESTION:** *"What genomic regions experienced recent strong selection in poplar, and do they show evidence of reduced divergence between the species, consistent with introgression?"*
+
+
+### with directional selection, what do we expect for Fst between two population?
+
+*either increases as site of sweet - local adaptation
+*or decreases - allele is favorable in both divergent populations
+
+### to test for selective sweets we will use RAiSD:
+
+
+We are looking for:
+* reduced diversity (part of Mu)
+* increased LD - more hitch hiking (also part of Mu)
+* skew in allele frequency distribution (enriched upper tail)
+  * this we can't look for with our data because we don't know what the ancestral + derived alleles are
+
+### we will divide and conquer
+
+*everyone pick a chromosome - my chromosome = 18
+* using vcftools parse out chromosome of interest
+* mask centromere region bc they are gene poor and hard to parse
+  * do using grep with centromere coordinates for your chromosome
+  * feed to RAiSD
+* Run RAiSD analysis
+* get the outputs with focus on Mu statistic
+* Use vcftools to also calculate nucleotide diversity and Fst in windows along chromosome in 50 kb each
+  * have to create groups for Fst first using admixture results (K=5)
+    * K4 corresponds to balsamifera
+    * K1-3 and K5 correspond to trichocarpa 
+    * these will be our groups for the Fst
+
+**See Chromosome18 folder**
+
+## Now do plotting:
+
+```{r}
+library(ggplot2)
+library(gridExtra) # If needed, install.packages("gridExtra")
+
+setwd("C:/Users/kretz/R/EcologicalGenomics/ecologicalgenomics/PopGenomics")
+
+pi <- read.table("Chr18.windowed.pi",sep="\t", header=T)
+str(pi)
+
+fst <- read.table("Bals_Tricho_All.windowed.weir.fst", sep="\t",header=T)
+str(fst)
+
+cent <- read.table("Chr18_centromere.txt", sep="\t",header=F)
+centromere = mean(c(cent$V2,cent$V3))
+
+raisd <- read.table("RAiSD_Report.Chr18.Chr18", sep="\t",header=F)
+str(raisd)
+
+p1 <- ggplot(pi,aes(x=BIN_START,y=PI/mean(PI))) +
+      geom_line(size=0.25, color="blue") + 
+      geom_point(aes(x=centromere,y=1, size=100), show.legend=F) +
+      xlim(max(pi$BIN_START)*0.6,max(pi$BIN_START)) +
+      ggtitle("Chomosome 18: Nucleotide diversity and Fst in 10kb sliding windows") +
+      xlab("") +
+      ylab("Scaled nucleotide diversity")
+
+p2 <- ggplot(fst,aes(x=BIN_START,y=MEAN_FST/mean(MEAN_FST))) +
+        geom_line(size=0.25, color="red") +
+        geom_point(aes(x=centromere,y=1, size=100), show.legend=F) +
+        xlim(max(fst$BIN_START)*0.6,max(fst$BIN_START)) + 
+        ylab("Scaled Fst")
+
+p3 <- ggplot(raisd,aes(x=V1,y=V7/mean(V7))) +
+      geom_point(size=0.25, color="black") +
+      xlim(max(raisd$V3)*0.6,max(raisd$V3)) + 
+      xlab("Position along chromosome (bp)") +
+      ylab("RAiSD u-stat")
+
+grid.arrange(p1, p2, p3, nrow = 3)
+
+```
+
+* with these plots, note that they are all scaled by their mean (normalized)
+* when we get selective sweeps:
+  * Fst should be low
+  * PI (nucleotid diversity) should also be low
+* in the neutral case
+  * Fst is average
+  * Pi is average
+* the mu-stat generates the manhattan plot
+  * where my-stat is high is where we see dips (selective sweeps?)
+  * indicates evidence of selection (higher = greater likelihood of selective sweeps)
+  
+Now we need to turn these into statistically meaningful results by checking if the overlaps we see are significant (correlation???). Do windows associated with peaks in mu correspond to low Fst? Fst is NOT used to calculate mu.
+
+Fst windows are calculated in windows of 50,000 bp.
+
+Load the packages in:
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+   install.packages("BiocManager")
+BiocManager::install("GenomicRanges")
+BiocManager::install("GenomicFeatures")
+
+library(GenomicRanges)
+library(GenomicFeatures)
+
+
+
+
+```
+
+
+We now will define bins based on where outliers in the data exist. These will be our outlier bins. Space between will be non-outlier bins. Entirely dependent on where you set your cutoff. Mu bins are when the mu stat is high. Fst bins are when Fst is low (above and below cut off respectively). Then we calculate observed overlap of Fst and mu stat. We then compare probability to chance. Chance will be calculated basically by using monte carlo simulation. Randomly shuffle a whole bunch of times and then compare frequency of the number of overlaps to where our actual observation. This will be a one-tail test bc we only care about greater than chance. So does out observed number of overlaps fall in the greatest 5%.
+
+
+```{r}
+
+
+####### Randomization test for Fst and sweep outliers #########
+
+setwd("C:/Users/kretz/R/EcologicalGenomics/ecologicalgenomics/PopGenomics")
+# Customize to where your Fst, Pi, and RAiSD files are located on your laptop
+getwd()
+
+fst <- read.table("Bals_Tricho_All.windowed.weir.fst", sep="\t",header=T) # Import the Fst results
+
+cent <- read.table("Chr18_centromere.txt", sep="\t",header=F) # Import the centromere coordinates
+
+fst <- fst[-which(fst$BIN_START>cent$V2 & fst$BIN_END<cent$V3),] # Mask Fst windows in the centromere region
+
+
+# Calculate Genomic Ranges for outlier bins
+
+CHR="Chr18"  # Customize to your chromosome.  Make sure syntax is exact!
+
+# Define the genomic ranges of the Fst bins
+fstGR <- GRanges(CHR,IRanges(fst[,"BIN_START"],fst[,"BIN_END"]))
+
+# Define what should be a "low" value of Fst.  Here, we'll try the lowest 10% of windows that don't incude the centromere.  Can play with this if you want (choosing the last value in the quantile function call). 
+  #label Fst values that are in the lowest 10% of Fst
+  #too small = too few bins
+  # too big = washed out signal
+  # for chr18 - 10% corresponds to 0.03407522 Fst
+fstThreshold = quantile(fst$MEAN_FST,0.1)
+
+# Call outliers (=1) or non-outliers (=2) based on fst Threshold
+  #ID fst bins that fall below Fst treshhold
+  # adds data to the fstGR object
+fstGR$outlier <- ifelse(fst$MEAN_FST<fstThreshold,1,2)
+
+# Grab just the outlier Fst windows
+fstCand <- subset(fstGR, outlier==1)
+  #reduces bins from 287 to 29
+
+
+#---------------------------------------------------------#
+#               same thing with raisd stat                 
+#---------------------------------------------------------#
+
+
+raisd <- read.table(paste0("RAiSD_Report.",CHR,".",CHR), sep="\t",header=F) # Import the RAiSD results
+
+# Define RAiSD genomic ranges based on first and last SNP within the RAiSD windows of 50 SNPs each.   How deos this relate to the Fst window size?
+  # wayyy more bins  - we don't want to test every snp)
+raisdGR <- GRanges(CHR,IRanges(raisd[,2],raisd[,3]))
+
+# Define RAiSD outliers, based on the upper 1% of SNPs
+  #upper 1% because higher values are better
+  # so many snps so want to filter out as many as possible
+raisdThreshold = quantile(raisd$V7,0.99)
+  
+raisdGR$outlier <- ifelse(raisd$V7>raisdThreshold,"outlier","non")
+
+#reduce the raisd genomic ranges object to bins
+raisdGR_out <- unlist(reduce(split(raisdGR, ~outlier)))
+raisdGR_out$outlier <- names(raisdGR_out)
+raisdCand <- subset(raisdGR_out, outlier=="outlier")
+  #reduces to 40 bins
+
+# we can now relate these to the overlap with the Fst bins
+
+#---------------------------------------------------------#
+#                      calculate overlap                      
+#---------------------------------------------------------#
+
+# Use GenomicRanges to pull out the RAiSD outlier windows that overlap the lowest Fst windows
+  #check where they intersect
+overlap <- subsetByOverlaps(raisdCand, fstCand)
+
+length(overlap) # Number of the RAiSD sweep candidate loci that overlap with the lowest n% of Fst windows
+
+## now test for significance
+
+# A little code I wrote to permute Fst values randomly among the 50kb windows, and re-calculate the overlap with the RAiSD outliers. 
+# Can set number of permutation replicates (NumPerm)
+# 1000 permutations seems to give a decent randomized distribution
+
+#how many reps of permutation
+NumPerm=1000
+
+
+Perm = NA
+for(i in 1:NumPerm){
+  FstSamp = cbind(fst[,c(2,3)], fst[sample(nrow(fst)),6]) #binds lower and upper of bin to a random Fst value
+  names(FstSamp) = c("Start", "Stop", "FST") #assign column names
+  FstRand = FstSamp[which(FstSamp[3]<fstThreshold),]  
+  FstRand_ranges <- GRanges(seqnames=CHR, ranges=IRanges(FstRand[,1],FstRand[,2]))
+  FstRand_ranges_red <- reduce(FstRand_ranges)
+  Perm[i] = sum(countOverlaps(raisdCand, FstRand_ranges_red)) # counts number of overlaps
+}
+
+# Plot the random distribution with a blue line marking the observed overlap
+hist(Perm, col="gray", main="Randomization test - Chromosome 18", xlab="Overlapping windows of Fst and RAiSD outliers")
+abline(v=length(overlap), col="blue", lwd=3)
+
+# Calculate the p-pvalue based on the rank of the observed value in the randomized distirbution.
+# Note the 1-tailed test here (alpha = 0.05)
+
+p_value = 1-ecdf(Perm)(length(overlap))
+p_value
+
+
+
+
+```
+
+
+## Now we need to compare to annotated genome
+
+grab /data/project_data/PopGenomics/Annotation/Ptrichocarpa_533_v4.1.gene.gff3.gz from server. Contains exons, introns, untranslated gene (UTR) + start and stop of transcripts.
+
+Import file to R:
+
+
+```{r}
+
+ 
+
+# Import the GFF annotation file and make a transcript database
+txdb <- makeTxDbFromGFF("Ptrichocarpa_533_v4.1.gene.gff3.gz", format="gff3")
+
+txdb
+
+# How many chromosomes are present?
+head(seqlevels(txdb))
+
+# Subset the database for just your chromosome of interest
+seqlevels(txdb) <- CHR # subset for just your chromosome
+
+# Reduce the transcript database to just the non-redundant gene names, instead of multiple entries for all the variant transcript types per gene
+  # collapse data down to single row per gene
+genes <- unlist(reduce(transcriptsBy(txdb, by="gene"))) 
+genes$geneID <- names(genes)
+
+# now check for overlap:
+candGenes <- subsetByOverlaps(genes, overlap)
+  #79 candidate genes with overlap
+
+# write to a file
+setwd("C:/Users/kretz/R/EcologicalGenomics/ecologicalgenomics/PopGenomics")
+write.table(candGenes$geneID, paste0("candGenes",CHR,".txt"), quote=F, col.names=F, row.names=F, sep=",")
+
+
+```
+
+Now we can copy these genes into popgenie to determine their function.
+
+* pfam = protein family 
+* kegg = pathway enrichment
+* miRNA
+* chipSeq = protein - protein interaction
+
+
+
+### How else might we get low Fst and Low nucleotide diversity besides sweeps?
+
+* Both individuals recieve the allele that is introgressed originally
+  * these alleles would show different ancestry than adaptive introgression
+  * we will call this ancestral polymorphism
+* this is recurring in adaptive introgression studies
+* we need to understand what portion of the chromosome is inherited by a gives species/ancestor 
+  * we call this local ancestry inference!
+  
+### Local ancestry inference
+
+* tells us which parts of the chromosome are derived from some ancestor
+* also called chromosome painting
+* we can also learn which areas are susceptible to introgression
+  * these may be candidates for adaptive introgressions
+* we can also see which regions are more resistant to introgression which may contribute to isolation
+* computationally intensive!!
+  * we will use loter
+* loter makes very few assumptions about your system
+
+
+Load loter:
+
+```
+git clone https://github.com/bcm-uga/Loter.git
+cd Loter/python-package
+python setup.py install --user
+
+```
+
+
+Define chromosome and extract reference balsam and trichocarpa individuals:
+
+```
+#CD to directory!!!
+cd /data/project_data/PopGenomics/shared/Chr18_sweeps/
+  #we have to be here bc our VCF files are here
+
+
+
+CHR="Chr18"  # Be sure to customize to your chromosome number!!!
+
+echo $CHR  # Does it look right?
+
+# Then make some new folders to store future results in:
+
+mkdir LAI
+
+cd LAI/
+
+mkdir Admixed
+
+
+```
+
+Now we run R at the command line to parse individuals by ancestry
+
+```
+# Interactive R session at the commandline:
+
+R
+
+# Import K=5 Admixture run
+Qscores <- read.table("/data/project_data/PopGenomics/shared/poplar_hybrids.LDpruned.5.Q", sep=" ",header=F)
+names(Qscores) = c("K1","K2","K3","K4","K5")
+
+# Import meta-data
+meta <- read.table("/data/project_data/PopGenomics/Combined_Transect_Sampling_Data_2020.txt",sep="\t",header=T)
+
+# Combine them 
+merged <- cbind(meta,Qscores)
+str(merged)
+
+
+#run forloop to assign ancestry to each individual
+for(i in 1:nrow(merged)){
+if(merged$K4[i]>=0.99){
+    merged$Anc[i]="Bals"
+    }else if (sum(c(merged$K1[i],merged$K2[i],merged$K5[i]))>=0.99){
+    merged$Anc[i]="Tricho"
+    } else if(merged$K3[i]>0.5){
+    merged$Anc[i]="PopSpp"
+    }else{
+    merged$Anc[i]="Admx"
+    }
+}
+
+
+table(merged$Anc)
+
+##Output##
+#  Admx   Bals PopSpp Tricho
+#   442     46      8     80
+
+
+
+#Write out sample ids to separate files for use in VCFtools
+
+Bals_Inds_Ref <- merged[merged$Anc=="Bals",1]  
+length(Bals_Inds_Ref) # Should net you 46 individuals
+write.table(Bals_Inds_Ref, "Balsam.Inds", quote=F, row.names=F, col.names=F)
+
+Tricho_Inds_Ref <- merged[merged$Anc=="Tricho",1]
+length(Tricho_Inds_Ref) # Should net you 80 individuals
+write.table(Tricho_Inds_Ref, "Tricho.Inds", quote=F, row.names=F, col.names=F)
+
+Admixed_Inds <- merged[merged$Anc=="Admx",1]
+length(Admixed_Inds) # Should net you 442 individuals
+write.table(Admixed_Inds, "Admixed.Inds", quote=F, row.names=F, col.names=F)
+
+quit() # choose 'n' when prompted
+
+```
+
+
+### Switch to VCFtools:
+
+```
+# grab reference individuals
+
+vcftools --gzvcf /data/project_data/PopGenomics/shared/${CHR}_sweeps/${CHR}.recode.vcf --keep Balsam.Inds --recode --stdout | gzip -c >poplar_hybrids.maf05.${CHR}.BalsRef.vcf.gz
+
+vcftools --gzvcf /data/project_data/PopGenomics/shared/${CHR}_sweeps/${CHR}.recode.vcf --keep Tricho.Inds --recode --stdout | gzip -c >poplar_hybrids.maf05.${CHR}.TrichoRef.vcf.gz
+
+#bring in snp positions for one of your files
+
+vcftools --gzvcf poplar_hybrids.maf05.${CHR}.BalsRef.vcf.gz --kept-sites --out ${CHR}
+
+
+#use a while read loop to iterate over every line in the admixed.inds file to look at sample ID
+
+# Example while loop:
+
+while read ID
+do
+  echo "$ID"
+done < Admixed.Inds
+
+
+"
+#While loop in SCREEN:
+
+### redefine chromosome
+
+CHR="Chr18"
+
+while read ID
+do
+  vcftools --gzvcf /data/project_data/PopGenomics/shared/${CHR}_sweeps/${CHR}.recode.vcf \
+  --indv $ID \
+  --recode \
+  --stdout | gzip -c   >Admixed/poplar_hybrids.maf05.${CHR}.${ID}.vcf.gz
+done < Admixed.Inds
+
+
+
+```
+
+
+### now switch to loter
+
+* this is homework! We will have to run once our other stuff is done running
+
+* kill a command by using ctrl C
+
+```
+cd /data/project_data/PopGenomics/shared/Chr18_sweeps/LAI
+
+CHR="Chr18"
+
+
+# First, make a new dir to store the results:
+mkdir Loter_out
+
+while read ID
+do
+for file in Admixed/poplar_hybrids.maf05.${CHR}.${ID}.vcf.gz
+do
+loter_cli -r poplar_hybrids.maf05.${CHR}.BalsRef.vcf.gz poplar_hybrids.maf05.${CHR}.TrichoRef.vcf.gz \
+-a $file \
+-f vcf \
+-o Loter_out/${ID}_LAI.txt \
+-n 1 \
+-pc -v
+done
+done < Admixed.Inds
+
+
+```
+
+
+Once loter is done we can check to make sure that it ran and then look in the file. There will be a bunch of 0s, 1s, or both. If we wrap this we can see it is actually the two chromosome pairs at each allele.
+
+0 = balsamifera ancestry
+1 = trichocarpa ancestry
+
+Currently this is haploid but we want it diploid (0,1,2 vs. 0,1). Steve tried R but it crashed.
+
+Instead we will use datamash.
+
+
+### Running data mash to go from haploid to diploid
+
+```
+## As LOTER files get output, can convert these into 0/1/2 encoding using the bash tool 'datamash'
+
+## From within your LAI/ directory:
+
+CHR="Chr18"
+
+echo $CHR # Is it right?
+
+# calculates and stores the number of SNP sites for your chromosome
+#should be 442 but good for repetability and sanity check
+Nsites=`tail -n +2 ${CHR}.kept.sites | wc -l | sed 's/\s/\t/' | cut -f1` 
+
+echo $Nsites # For Chr18, Nsites=208375 SNPs
+
+# calculates and stores the number of admixed individuals you previously identified
+Ninds=`wc -l Admixed.Inds | sed 's/\s/\t/' | cut -f1` 
+
+echo $Ninds  # Should be 442 individuals
+
+## Now run data mash
+
+#initiates a file with nothing in it (container)
+touch ${CHR}_matrix.diploid
+
+#runs a loop through each file
+#then calculates a sum for each column across rows
+#from 1 to total number of sites
+#take in file your loop through
+# >> indicates append output to bottom of the file
+for file in Loter_out/*.txt
+do
+datamash --field-separator=" " sum 1-${Nsites} <$file >>${CHR}_matrix.diploid
+done
+
+## Now we want to transpose this
+#replaces space with tabs (\s to \t)
+#does this globals (\g) for your file
+#pipe to cut out the ??
+# goes through all sites and transposes 
+#outputs to a new file
+sed 's/\s/\t/g' ${CHR}_matrix.diploid | cut -f1-${Nsites} | datamash transpose >${CHR}_matrix.diploid.tr
+
+### now we can convert this to plink format
+
+## rangles data matrix to plink format
+# plink expects ACTG format so we have to trick it by making 3 columns
+
+#creates a variable for each snp (snp ID)
+seq -f "snp%02g" 1 $Nsites >sites
+
+#repeats A for the number of sites???
+# I don't really get this
+printf 'A\n%.0s' $(seq $Nsites) >allele1  # Create a dummy column of 'A' the length of your Nsites file
+
+#Same as above
+printf "T\n%.0s" $(seq $Nsites) >allele2 # Create a dummy column of 'T' the length of your Nsites file
+
+# makes new directory
+mkdir Plink
+
+# paste to bind columns together
+# Output new column
+paste sites allele1 allele2 ${CHR}_matrix.diploid.tr >Plink/${CHR}_matrix.diploid.tr.forPlink
+
+### also wants a file with sample ids
+
+## this is mostly filed with dummy variables
+## called a fam file
+#sets family as transect 
+#next is sample ID
+# rest are just dummy variables that we don't need
+
+# first one opens meta data and passes through pipe
+#cuts our first two files
+#grep to search for IDs contained within admixed inds (442 admixed IDs) - match as whole word
+#append to our Fam file
+cat /data/project_data/PopGenomics/Combined_Transect_Sampling_Data_2020.txt | \
+cut -f1-2 | \
+grep -w -f Admixed.Inds - | \
+cut -f2 | \
+paste - Admixed.Inds >FID_IID
+
+printf '0\t0\t0\t-9\n%.0s' $(seq $Ninds) >dummy
+
+paste FID_IID dummy  >Plink/${CHR}_fam.forPlink
+
+
+### Now we can finally run Plink!
+
+## This runs the Plink conversion from allele dosages to bed format
+
+cd Plink/ 
+
+plink2 --import-dosage ${CHR}_matrix.diploid.tr.forPlink noheader \
+--fam ${CHR}_fam.forPlink \
+--make-bed \
+--out ${CHR}_Admixed_FAI
+
+### we can then calculate the LAI frequencies
+
+plink2 --bfile ${CHR}_Admixed_FAI --freq --out ${CHR}_LAI_freq
+
+
+
+```
+
+We then transfer this file and the sites file to our computer. And then execute in R.
+
+
+```{r}
+
+library(ggplot2)
+setwd("C:/Users/kretz/R/EcologicalGenomics/ecologicalgenomics/PopGenomics")
+
+
+# Read in list of positions
+snps <- read.table("Chr18.kept.sites",sep="\t", header=T)
+
+# Read in the local ancestry frequencies from Plink
+AF <- read.table("Chr18_LAI_freq.afreq", skip=1,sep="\t",header=F)  
+
+# Note the skip=1 here.  
+# This skips the first line, since Plink's header line doesn't play well with R.  
+# We'll define our own header line below.
+
+names(AF) = c("CHROM",  "ID",   "REF",  "ALT",  "ALT_FREQS",    "OBS_CT")
+
+AF2 <- cbind(snps,AF)
+
+str(AF2) # How does it look?
+
+# A simple plot:
+
+p1 <- ggplot(AF2[,-3],aes(x=POS,y=ALT_FREQS)) +
+  geom_line(size=0.25, color="blue") + 
+  xlab("Position (bp) along chromosome") +
+  ylab("Frequency P. trichocarpa ancestry")
+
+p1
+
+
+```
+
+
+
+PopGen homework due 11/19
+
+
+
+### Admixture mapping
+
+### Back to plink:
+
+
+```
+CHR="Chr18"
+
+echo $CHR  # Does it look right?
+
+cd /data/project_data/PopGenomics/shared/${CHR}_sweeps/LAI/
+
+# Get phenotype data from meta file for the admixed samples:
+
+tail -n +2 /data/project_data/PopGenomics/VT_Garden_Phenotypes_2021.txt | \
+grep -w -f Admixed.Inds - >Admixed.pheno
+
+
+#family ID, individual ID, rust, flush, and set (columns)
+#append header to file
+printf "#FID\tIID\tRUST\tFLUSH\tSET\n%.0s" >Plink/pheno.forPlink
+
+#append data to file below header
+cat Admixed.pheno >>Plink/pheno.forPlink
+
+
+```
+
+
+We have at least 442 in this data set that we pulled out. Some died so we definitely had less
+
+
+Now we want to go to the admixture matrix and create the covariate matrix
+
+
+```
+# Get K=2 ADMIX to use as covariate; Need to use tail -n +2 to skip the header in the metadata file before pasting to the Q file
+
+#grab meta data
+# grad just transect colum
+# paste with other daa
+# add just admixed ones
+#replace space with tabs
+# output is file admixed_kbals
+tail -n +2 /data/project_data/PopGenomics/Combined_Transect_Sampling_Data_2020.txt | \
+cut -f1 | \
+paste - /data/project_data/PopGenomics/shared/poplar_hybrids.LDpruned.5.Q | \
+grep -w -f Admixed.Inds - | \
+sed 's/\s/\t/g' | \
+cut -f 1,5 >Plink/Admixed_KBals
+
+#grab individual ids
+# of just the admixed individuals 
+cat /data/project_data/PopGenomics/Combined_Transect_Sampling_Data_2020.txt | \
+cut -f1-2 | \
+grep -w -f Admixed.Inds - | \
+sed 's/\s/\t/g' | \
+cut -f2 >Plink/Transect
+
+# Create the cov file with KBals
+
+#pring header to file 
+#then all the actual data
+printf "#FID\tIID\tK2Q\n%.0s" >Plink/cov.forPlink
+paste Plink/Transect Plink/Admixed_KBals >>Plink/cov.forPlink
+
+
+
+```
+
+Once we have the covariate matrix we can run the admixture mapping. We will use the admixture file we created on Monday (--bfile)
+
+
+
+```
+cd Plink/
+
+#takes big matrix as input
+# uses phenotype and covariance files we just created
+#glm omit-ref tell it to not do use a reference
+
+plink2 --bfile ${CHR}_Admixed_FAI \
+--pheno pheno.forPlink \
+--covar cov.forPlink \
+--glm omit-ref
+
+
+```
+
+
+
+Now we pull these into R for analysis!!
+
+
+
+```{r}
+
+library(ggplot2)
+library(gridExtra)
+
+
+setwd("C:/Users/kretz/R/EcologicalGenomics/ecologicalgenomics/PopGenomics")
+snps <- read.table("Chr18.kept.sites", sep = "\t", header = T)
+
+### Load in files and merge to 1
+
+# Get the list of admixed individuals:
+Admixed <- read.table("Admixed.Inds",header=F)
+
+# Get the meta data:
+meta <- read.table("Combined_Transect_Sampling_Data_2020.txt", sep="\t",header=T)
+
+# merge them together:
+meta_admx <- merge(meta, Admixed, by.x="ID", by.y="V1")
+str(meta_admx)  
+
+# Read in the Admixture coefficients for KBals that we made from the K=5 file:
+KBals <- read.table("Admixed_KBals", sep="\t", header=F)
+names(KBals) = c("ID","KBals")
+
+# Second merge:
+meta_admx_KBals <- merge(meta_admx,KBals,by="ID")
+
+
+# Bring in phenotype data:
+pheno <- read.table("VT_Garden_Phenotypes_2021.txt",sep="\t",header=T)
+
+# Merge pheno data with meta and KBals:
+meta_admx_KBals_pheno <- merge(meta_admx_KBals,pheno,by="ID")
+
+### Then we can start plotting 
+## Do phenotypes show a relationship to overall ancestry 
+
+#  Rust
+plotRust <- ggplot(meta_admx_KBals_pheno,aes(x=KBals,y=RUST, color=Transect.x)) +
+  geom_point(size=2) + 
+  xlab("Proportion P. balsamifera ancestry") +
+  ylab("Rust susceptibility") 
+
+plotRust
+
+# Bud set
+plotBudset <- ggplot(meta_admx_KBals_pheno,aes(x=KBals,y=SET, color=Transect.x)) +
+  geom_point(size=2) + 
+  xlab("Proportion P. balsamifera ancestry") +
+  ylab("Bud set") 
+
+plotBudset
+
+# Bud flush
+plotBudflush <- ggplot(meta_admx_KBals_pheno,aes(x=KBals,y=FLUSH, color=Transect.x)) +
+  geom_point(size=2) + 
+  xlab("Proportion P. balsamifera ancestry") +
+  ylab("Bud flush") 
+
+plotBudflush
+
+## Arrange all plots into one
+grid.arrange(plotRust, plotBudset, plotBudflush, nrow = 3)
+
+# linear models testing trait ~ genome-wide admixture association
+summary(lm(RUST~KBals + Transect.x, data=meta_admx_KBals_pheno))
+
+#                       Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)           -0.09572    0.03414  -2.804  0.00530 ** 
+# KBals                 -0.08407    0.04454  -1.887  0.05984 .  
+# Transect.xCassiar      0.11772    0.04290   2.744  0.00634 ** 
+# Transect.xChilcotin    0.10476    0.03571   2.934  0.00355 ** 
+# Transect.xCrowsnest    0.15826    0.03947   4.010 7.28e-05 ***
+# Transect.xIndian_Head  0.13497    0.04875   2.769  0.00590 ** 
+# Transect.xJasper       0.10661    0.03656   2.916  0.00376 ** 
+# Transect.xWyoming      0.26945    0.03936   6.846 2.97e-11 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 0.1991 on 388 degrees of freedom
+# Multiple R-squared:  0.1725,	Adjusted R-squared:  0.1576 
+# F-statistic: 11.56 on 7 and 388 DF,  p-value: 2.357e-13
+
+summary(lm(SET~KBals + Transect.x, data=meta_admx_KBals_pheno))
+
+# Coefficients:
+#                       Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)             -9.746      2.025  -4.812 2.14e-06 ***
+# KBals                  -26.539      2.642 -10.044  < 2e-16 ***
+# Transect.xCassiar        3.188      2.545   1.253    0.211    
+# Transect.xChilcotin     14.403      2.118   6.799 4.00e-11 ***
+# Transect.xCrowsnest     30.544      2.341  13.046  < 2e-16 ***
+# Transect.xIndian_Head   24.354      2.892   8.421 7.33e-16 ***
+# Transect.xJasper        22.768      2.169  10.496  < 2e-16 ***
+# Transect.xWyoming       30.276      2.335  12.968  < 2e-16 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 11.81 on 388 degrees of freedom
+# Multiple R-squared:  0.6482,	Adjusted R-squared:  0.6419 
+# F-statistic: 102.1 on 7 and 388 DF,  p-value: < 2.2e-16
+
+summary(lm(FLUSH~KBals + Transect.x, data=meta_admx_KBals_pheno))
+
+# Coefficients:
+#                       Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)           -1.29280    0.77350  -1.671  0.09546 .  
+# KBals                 -4.79023    1.00922  -4.746 2.92e-06 ***
+# Transect.xCassiar      0.07921    0.97196   0.081  0.93509    
+# Transect.xChilcotin    1.70354    0.80912   2.105  0.03590 *  
+# Transect.xCrowsnest    5.46074    0.89423   6.107 2.47e-09 ***
+# Transect.xIndian_Head  3.15875    1.10464   2.860  0.00447 ** 
+# Transect.xJasper       1.62067    0.82851   1.956  0.05117 .  
+# Transect.xWyoming      6.81336    0.89176   7.640 1.71e-13 ***
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 4.511 on 388 degrees of freedom
+# Multiple R-squared:  0.3675,	Adjusted R-squared:  0.3561 
+# F-statistic: 32.21 on 7 and 388 DF,  p-value: < 2.2e-16
+
+### We can see that trichocarpa both set later and flush later - inherently warm species and take more heat before breaking dormancy
+
+
+### Now let's look at the relationship between local ancestry when controlling for genome wide ancestry as a covariate:
+
+######  Bring in Association results from Plink   ######
+
+rust <- read.table("plink2.RUST.glm.linear",skip=1,sep="\t",header=F)
+names(rust) = c("CHROM",    "POS",  "ID",   "REF",  "ALT",  "A1",   "TEST", "OBS_CT",   "BETA", "SE",   "T_STAT",   "P")
+rust2 <- rust[which(rust$TEST=="ADD"),]
+
+# Define association outliers as the upper 0.1% of p-values
+
+#########  rust  #########
+rust2 <- cbind(snps, rust2[,-c(1:2)])
+rust2$outlier = ifelse(rust2$P<quantile(rust2$P,0.001),2,1)
+
+p1 <- ggplot(rust2,aes(x=POS,y=-1*log10(P))) +
+  geom_point(size=rust2$outlier, color=rust2$outlier) + 
+  xlab("Position (bp) along chromosome") +
+  ylab("-log10 P-value") +
+  ggtitle("Rust infection")
+
+#p1
+
+####### Bud set  #########
+budset <- read.table("plink2.SET.glm.linear",skip=1,sep="\t",header=F)
+names(budset) = c("CHROM",  "POS",  "ID",   "REF",  "ALT",  "A1",   "TEST", "OBS_CT",   "BETA", "SE",   "T_STAT",   "P")
+budset2 <- budset[which(budset$TEST=="ADD"),]
+budset2 <- cbind(snps, budset2[,-c(1,2)])
+budset2$outlier = ifelse(budset2$P<quantile(budset2$P,0.001),2,1)
+
+p2 <- ggplot(budset2,aes(x=POS,y=-1*log10(P))) +
+  geom_point(size=budset2$outlier, color=budset2$outlier) + 
+  xlab("Position (bp) along chromosome") +
+  ylab("-log10 P-value") +
+  ggtitle("Bud set")
+
+#p2
+
+#########  Bud flush  #########
+budflush <- read.table("plink2.FLUSH.glm.linear",skip=1,sep="\t",header=F)
+names(budflush) = c("CHROM",    "POS",  "ID",   "REF",  "ALT",  "A1",   "TEST", "OBS_CT",   "BETA", "SE",   "T_STAT",   "P")
+budflush <- budflush[which(budflush$TEST=="ADD"),]
+budflush2 <- cbind(snps, budflush[,-c(1,2)])
+budflush2$outlier = ifelse(budflush2$P<quantile(budflush2$P,0.001),2,1)
+
+p3 <- ggplot(budflush2,aes(x=POS,y=-1*log10(P))) +
+  geom_point(size=budflush2$outlier, color=budflush2$outlier) + 
+  xlab("Position (bp) along chromosome") +
+  ylab("-log10 P-value") +
+  ggtitle("Bud flush")
+
+#p3
+
+grid.arrange(p1, p2, p3, nrow = 3)
+
+
+### Now we can see some outlier for each of these traits! Cool - this is an indication of where QTLs may be
+
+### grab the outliers
+
+# Get outliers for a given trait association:
+
+rust_outliers <- rust2[which(rust2$outlier==2),c(2,3,9)]
+set_outliers <- budset2[which(budset2$outlier==2),c(2,3,9)]
+flush_outliers <- budflush2[which(budflush2$outlier==2),c(2,3,9)]
+
+###plot local ancestry with association plots
+
+# Plot freq of LAI along chr
+
+AF <- read.table("Chr18_LAI_freq.afreq", skip=1,sep="\t",header=F)
+names(AF) = c("CHROM",  "ID",   "REF",  "ALT",  "ALT_FREQS",    "OBS_CT")
+str(AF)
+
+AF2 <- cbind(snps,AF)
+
+windows <- seq(1,max(AF2$POS),5e4)
+AF_windows <- numeric()
+
+for(i in 1:length(windows)){
+  tmp=AF2[which(AF2$POS>windows[i] & AF2$POS<windows[i+1]),"ALT_FREQS"]
+  ancfreq=mean(tmp)
+  AF_windows[i] = ancfreq
+}
+
+AF3 <- as.data.frame(cbind(windows,AF_windows))
+names(AF3) = c("window","AvgAncFreq")
+
+### define outlier regions on the chromosomes
+
+upper = mean(AF3$AvgAncFreq,na.rm=T) + 2*sd(AF3$AvgAncFreq,na.rm=T)
+lower = mean(AF3$AvgAncFreq,na.rm=T) - 2*sd(AF3$AvgAncFreq,na.rm=T)
+
+outliers_upper = AF3[which(AF3$AvgAncFreq>upper),]
+outliers_lower = AF3[which(AF3$AvgAncFreq<lower),]
+
+# Print the outlier regions out
+outliers_upper
+outliers_lower
+
+# And finally, make the 4-panel plot with the trait associations
+p4 <- ggplot(AF3[,-3],aes(x=window,y=AvgAncFreq)) +
+  geom_line(size=0.8, color="blue") + 
+  xlab("Position (bp) along chromosome") +
+  ylab("Frequency P. trichocarpa ancestry") +
+  geom_hline(yintercept=mean(AF2$ALT_FREQS), color = "red") + 
+  geom_hline(yintercept=upper, linetype="dashed", color = "red") + 
+  geom_hline(yintercept=lower, linetype="dashed", color = "red") +
+  ggtitle("Chr02: Local ancestry")
+
+p4
+
+
+grid.arrange(p1, p2, p3, p4, nrow = 4)
+
+
+# It seems like the 3 phenotypes show a species-specific pattern of balsamifera having lower disease, earlier bud set, and also earlier bud flush. Are these correlations maintained in admixed genotypes, even after recombination shuffles ancestry blocks up? If so, then it’s likely there is pleiotropy (shared genetic basis) underlying the traits.
+# 
+# We can look at this by grabbing the Betas for the admiture mapping, which give us the effect of substituting tricho for balsam ancetry. The Betas tell us both the direction that has on the phenotype (increase vs. decrease) and also the magnitude of the effect. Are the Betas for one trait correlated with the Betas for another trait, as predicted by the pleiotropy hypothesis?
+
+
+###look at betas
+
+# Get the betas from each trait and look at pleiotropy between traits
+betas <- cbind(rust[,c(1:3,9)],budset2[,9],budflush2[,9])
+names(betas) = c("CHROM","POS","ID","beta_rust","beta_set","beta_flush")
+str(betas)
+
+cor(betas[,4:6],betas[4:6])
+
+plot(beta$beta_set,betas$beta_flush)
+
+p5 <- ggplot(betas,aes(x=beta_flush,y=beta_set)) +
+  geom_point(color="darkgray") + 
+  xlab("Beta bud flush") +
+  ylab("Beta bud set") +
+  ggtitle("Correlation of bud set and flush effect sizes")
+
+p5
+
+# each dot is a snp and we see a pretty strog correltion between budset and budflush
+# there must be some sort of linkeage here - physical clustering of genes causing an impact on phenology
+#beta is the effect of subsituting a different allele? - phenotypic change
+
+
+
+```

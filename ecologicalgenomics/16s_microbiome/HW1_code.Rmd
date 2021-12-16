@@ -1,0 +1,201 @@
+---
+title: "HW1_code"
+author: "Bailey Kretzler"
+date: "9/29/2021"
+output: html_document
+---
+
+
+### Supplemental code 1:
+
+This code is used to denoise the data by trimming and truncating from the forward and reverse reads.
+
+```
+qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs demux-paired-end_full.qza \
+  --p-n-threads 1 \
+  --p-trim-left-f 16 \
+  --p-trim-left-r 0 \
+  --p-trunc-len-f 278 \
+  --p-trunc-len-r 220 \
+  --o-table table.qza \
+  --o-representative-sequences rep-seqs.qza \
+  --o-denoising-stats denoising-stats.qza
+```
+
+### Supplemental code 2:
+
+This code is used for summarizing denoising outputs so they can be visualized to make decisions on sequencing depth and data handling.
+
+```
+## summarize feature table for visualization based on meta data
+qiime feature-table summarize \
+--i-table table.qza \
+--o-visualization table.qzv \
+--m-sample-metadata-file pyc_manifest
+
+## summarize representative sequences for visualization
+qiime feature-table tabulate-seqs \
+--i-data rep-seqs.qza \
+--o-visualization rep-seqs.qzv
+
+# tabulate denoising stats meta data 
+qiime metadata tabulate \
+--m-input-file denoising-stats.qza \
+--o-visualization denoising-stats.qzv
+
+
+
+```
+
+### Supplemental code 3:
+
+This code is used to build a phylogenetic tree to understand relationship between the taxa present. This is used in subsequent analysis. 
+
+```
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences rep-seqs.qza \
+  --o-alignment aligned-rep-seqs.qza \
+  --o-masked-alignment masked-aligned-rep-seqs.qza \
+  --o-tree unrooted-tree.qza \
+  --o-rooted-tree rooted-tree.qza
+
+```
+
+### Supplemental code 4:
+
+This code is used to calculate core diversity metrics such as the shannon alpha diversity index and the weighted unifrac distance for beta diversity. These are put into a directory containing a number of core diversity metrics.
+
+```
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table table.qza \
+  --p-sampling-depth 9000 \
+  --m-metadata-file pyc_manifest \
+  --output-dir core-metrics-results
+  
+  
+## visualization of unifrac distance by site+animal health
+qiime diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/weighted_unifrac_distance_matrix.qza \
+  --m-metadata-file pyc_manifest \
+  --m-metadata-column site-animal-health \
+  --o-visualization core-metrics-results/weighted-unifrac-site-animal-health-significance.qzv \
+  --p-pairwise
+
+```
+
+### Supplemental code 5:
+
+This code is used to assign taxonomy to out features based on known sequences in the greengenes data base. This can then be visualized to determine who is present and used to create a bar plot.
+
+
+```
+
+## Train taxonomy data based on greengenes classifier
+qiime feature-classifier classify-sklearn \
+  --i-classifier /data/project_data/16S/training-feature-classifiers/classifier.qza \
+  --i-reads rep-seqs.qza \
+  --o-classification taxonomy.qza
+
+
+##Generate table style visualization
+qiime metadata tabulate \
+  --m-input-file taxonomy.qza \
+  --o-visualization taxonomy.qzv 
+  
+## Generate bar plot visualization
+qiime taxa barplot \
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file pyc_manifest \
+  --o-visualization taxa-bar-plots.qzv
+
+```
+
+### Supplemental code 6
+
+This code chunk contains the data analysis used for determining significant differences in abundance.
+
+```{r}
+
+library(ggplot2)
+library(qiime2R)
+library(tidyverse)
+library(agricolae)
+
+## Import relative frequencies csv at genus level
+relFreqTaxa <- read.csv("level_6.csv")
+
+
+## create empty pval matrix
+pvals = matrix(data = 0, nrow = ncol(relFreqTaxa)-11, ncol = 2)
+
+##loop through anova for each column and store pvalue
+for (i in 5:(ncol(relFreqTaxa)-7)){
+  column <- as.character(colnames(relFreqTaxa))[i]
+  model <- anova(lm(relFreqTaxa[,i]~relFreqTaxa[,856]))
+  pvals[(i-4),2]<- model[1,5]
+  pvals[(i-4),1] <- column
+}
+
+## extract those that are significant
+length(which(as.numeric(pvals[,2]) < 0.05))
+sigGenus <- pvals[(which(as.numeric(pvals[,2]) < 0.05)),] 
+
+## Tukey tests
+
+#Pseudoaltermonas
+PAM = HSD.test(aov(data = relFreqTaxa,	
+k__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales.f__Pseudoalteromonadaceae.g__Pseudoalteromonas~site.animal.health),
+                          "site.animal.health", 
+                         group = TRUE, console = TRUE)
+PAM[[5]]
+
+# Spirochaetaceae 
+SPIRO = HSD.test(aov(data = relFreqTaxa,	
+k__Bacteria.p__Spirochaetes.c__Spirochaetes.o__Spirochaetales.f__Spirochaetaceae.g__~site.animal.health),
+                          "site.animal.health", 
+                         group = TRUE, console = TRUE)
+SPIRO[[5]]
+
+
+# Vibrio 
+VIB = HSD.test(aov(data = relFreqTaxa,	
+k__Bacteria.p__Proteobacteria.c__Gammaproteobacteria.o__Vibrionales.f__Vibrionaceae.g__Vibrio~site.animal.health),
+                          "site.animal.health", 
+                         group = TRUE, console = TRUE)
+
+VIB[[5]]
+
+# Bacteroidales
+BACT = HSD.test(aov(data = relFreqTaxa,	
+k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__.g__~site.animal.health),
+                          "site.animal.health", 
+                         group = TRUE, console = TRUE)
+
+BACT[[5]]
+
+# Flammeovirgaceae
+FLAMMEO = HSD.test(aov(data = relFreqTaxa,	
+k__Bacteria.p__Bacteroidetes.c__Cytophagia.o__Cytophagales.f__Flammeovirgaceae.__~site.animal.health),
+                          "site.animal.health", 
+                         group = TRUE, console = TRUE)
+
+FLAMMEO[[5]]
+
+# Psychrilyobacter 
+PYS = HSD.test(aov(data = relFreqTaxa,	
+k__Bacteria.p__Fusobacteria.c__Fusobacteriia.o__Fusobacteriales.f__Fusobacteriaceae.g__Psychrilyobacter~site.animal.health),
+                          "site.animal.health", 
+                         group = TRUE, console = TRUE)
+
+PYs[[5]]
+
+
+
+
+
+
+
+```

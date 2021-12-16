@@ -1,0 +1,65 @@
+cd /data/project_data/ancient/rawdata
+
+
+# look at file
+wc trichocarpa_genomic.fna.gz
+# output is number of line , number of words, number of characters
+
+
+# create a file with all of the sequences to align
+cat davidiana_genomic.fna.gz Deltoides_genomic.fna.gz euphratica_genomic.fna.gz ilicifolia_genomic.fna.gz salix_purpurea_genomic.fa.gz salix_purpurea_genomic.fa.gz simonii_genomic.fna.gz tomentosa_genomic.fna.gz alba_genomic.fna.gz > new_sequences.fna.gz
+
+# unzip both of these files
+gunzip trichocarpa_genomic.fna.gz
+
+gunzip new_sequences.fna.gz
+
+# run nucmer to align and get the delta file
+nucmer -p trichocarpa_genomic.fna new_sequences.fna
+
+
+
+
+
+
+##################################################
+## Old Code, IGNORE
+##################################################
+# use to check that number of scaffolds is retained
+# or that scaffolds are present at all
+zcat alba_genomic.fna.gz | grep '>' | wc -l
+
+# adding to the end of the file
+zcat filetoadd >> filetoaddto 
+
+cp alba_genomic.fna.gz new_sequences.fna.gz
+
+zcat davidiana_genomic.fna.gz >> new_sequences.fna.gz
+zcat Deltoides_genomic.fna.gz >> new_sequences.fna.gz
+zcat euphratica_genomic.fna.gz >> new_sequences.fna.gz
+zcat ilicifolia_genomic.fna.gz >> new_sequences.fna.gz
+zcat salix_purpurea_genomic.fa.gz >> new_sequences.fna.gz
+zcat simonii_genomic.fna.gz >> new_sequences.fna.gz
+zcat tomentosa_genomic.fna.gz >> new_sequences.fna.gz
+
+# try unzipping part of it
+
+zcat alba_genomic.fna.gz | head -n10 > alba_test.fasta # this worked
+
+
+# this isn't working because references isn't properly alignt
+# can put all the sequences together and pad by inserting AAAAAAA - string of single letter bc unlikely
+# take tricho reference - use sed 's/>.+\n[A]#/g' where # is the number of times you and to repeat
+# do a test with tricho - just do the head for like 4 lines
+
+#test set of tricho
+
+head -n631200 trichocarpa_genomic.fna > tricho_test
+
+tail -n10 tricho_test # check to make sure we captured 2
+
+#this works except doesn't grab everthing
+sed "s/>/i $(printf '%.0sA' {0..500})/g" tricho_test > tricho_edit_test
+
+
+
